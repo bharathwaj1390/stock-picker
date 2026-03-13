@@ -298,6 +298,120 @@ footer { visibility: hidden; }
     .sec-head    { font-size: .7rem; }
     .s-val       { font-size: 1.7rem; }
 }
+
+/* ── Scrollable stocks table — sticky left columns ── */
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.stocks-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8rem;
+}
+.stocks-table th {
+    background: rgba(5,12,28,0.99);
+    color: #7ab8d0;
+    font-size: .64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    padding: .72rem .6rem;
+    box-shadow: 0 2px 0 rgba(0,212,170,0.18);
+    white-space: nowrap;
+    text-align: right;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+.stocks-table th:nth-child(-n+3) { text-align: left; }
+/* CSS variable drives row background — inherited by every td including sticky ones */
+.stocks-table tbody tr          { --rbg: #080f1e; }
+.stocks-table tbody tr:nth-child(even) { --rbg: #0b1425; }
+.stocks-table tbody tr:hover    { --rbg: rgba(0,212,170,0.07); }
+.stocks-table td {
+    padding: .55rem .6rem;
+    white-space: nowrap;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: var(--rbg);
+    color: #c5dce8;
+}
+.stocks-table td:nth-child(-n+3) { text-align: left; }
+/* Sticky columns — left offsets match min-widths below */
+.sc-rank {
+    position: sticky; left: 0; z-index: 2;
+    min-width: 34px; width: 34px;
+    text-align: center !important;
+    color: #5a8099; font-size: .72rem;
+}
+.sc-sym {
+    position: sticky; left: 34px; z-index: 2;
+    min-width: 62px; width: 62px;
+    font-weight: 700; color: #eaf4fc !important;
+}
+.sc-co {
+    position: sticky; left: 96px; z-index: 2;
+    min-width: 118px; width: 118px;
+    max-width: 118px; overflow: hidden; text-overflow: ellipsis;
+    color: #9abccc !important;
+    border-right: 1px solid rgba(0,212,170,0.14) !important;
+    font-size: .76rem;
+}
+/* Header sticky cells need higher z-index and explicit bg */
+.stocks-table thead .sc-rank,
+.stocks-table thead .sc-sym,
+.stocks-table thead .sc-co {
+    z-index: 4;
+    background: rgba(5,12,28,0.99) !important;
+}
+
+/* ── Score guide (expander) ── */
+.sg-intro { font-size: .75rem; color: #9abccc; line-height: 1.6; margin-bottom: .9rem; }
+.sg-grid  {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-bottom: .85rem;
+}
+.sg-item  {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 9px; padding: .7rem .75rem;
+}
+.sg-name  { font-size: .78rem; font-weight: 800; color: #c8e4f0; margin-bottom: .18rem; }
+.sg-desc  { font-size: .64rem; color: #7a9ab5; margin-bottom: .42rem; line-height: 1.45; min-height: 2.5rem; }
+.sg-tiers { display: flex; flex-direction: column; gap: 3px; }
+.sgt-g, .sgt-y, .sgt-r {
+    font-size: .62rem; font-weight: 600;
+    padding: .1rem .4rem; border-radius: 3px; display: inline-block;
+}
+.sgt-g { background: rgba(27,94,32,0.45); color: #81c784; }
+.sgt-y { background: rgba(110,70,0,0.45); color: #ffd54f; }
+.sgt-r { background: rgba(110,0,0,0.45); color: #e57373; }
+.sg-ratings {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    padding-top: .75rem; border-top: 1px solid rgba(255,255,255,0.07);
+    font-size: .72rem;
+}
+.sg-ratings b { color: #9abccc; margin-right: 2px; }
+.sgr-sb, .sgr-b, .sgr-h, .sgr-av {
+    padding: .16rem .6rem; border-radius: 4px;
+    font-size: .68rem; font-weight: 700;
+}
+.sgr-sb, .sgr-b { color: #00e676; background: rgba(0,80,40,0.4); }
+.sgr-h  { color: #f0b429; background: rgba(90,55,0,0.4); }
+.sgr-av { color: #ff5252; background: rgba(80,0,0,0.4); }
+@media (max-width: 768px) {
+    .sg-grid { grid-template-columns: repeat(2, 1fr); }
+    .sg-desc { min-height: unset; }
+}
+@media (max-width: 420px) {
+    .sg-grid { grid-template-columns: 1fr; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -607,6 +721,89 @@ def _build_table(scored_df: pd.DataFrame):
     return display.style.apply(_apply_colors, axis=None).format(fmt, na_rep="—")
 
 
+def _render_table_html(scored_df: pd.DataFrame) -> str:
+    """
+    Build a fully custom HTML table with:
+    - Sticky Rank + Symbol + Company columns (always visible on horizontal scroll)
+    - Compact, content-appropriate column widths
+    - Green / amber / red cell colouring matching score thresholds
+    """
+    df = scored_df.copy()
+
+    def _cell(score: float) -> str:
+        try:
+            s = float(score)
+        except (TypeError, ValueError):
+            return ""
+        if s >= 7: return "background:#1B5E20;color:#a5d6a7"
+        if s >= 4: return "background:#7B4F00;color:#ffe082"
+        return "background:#7B0000;color:#ef9a9a"
+
+    def _f(val, fmt_str: str) -> str:
+        return fmt_str.format(val) if pd.notna(val) else "—"
+
+    _r_style = {
+        "Strong Buy": "color:#00e676;font-weight:800",
+        "Buy":        "color:#26c97a;font-weight:800",
+        "Hold":       "color:#f0b429;font-weight:700",
+        "Avoid":      "color:#ff5252;font-weight:700",
+    }
+    _r_emoji = {"Strong Buy": "🟢", "Buy": "🟢", "Hold": "🟡", "Avoid": "🔴"}
+
+    rows_html = ""
+    for i, (_, row) in enumerate(df.iterrows()):
+        symbol  = str(row["Symbol"]).replace(".NS", "")
+        company = str(row.get("Company") or "")[:22]
+        rating  = str(row.get("rating", "Hold"))
+        w52pos  = _52w_pct(row)
+
+        pe  = _f(row.get("PE Ratio"),           "{:.1f}")
+        pb  = _f(row.get("PB Ratio"),            "{:.2f}")
+        roe = _f(row.get("ROE (%)"),             "{:.1f}%")
+        de  = _f(row.get("Debt/Equity"),         "{:.2f}")
+        gr  = _f(row.get("Revenue Growth (%)"),  "{:.1f}%")
+        w52 = _f(w52pos,                         "{:.0f}%")
+        vs  = f"{row.get('value_score', 0):.2f}"
+
+        rows_html += (
+            f'<tr>'
+            f'<td class="sc-rank">{i + 1}</td>'
+            f'<td class="sc-sym">{symbol}</td>'
+            f'<td class="sc-co" title="{company}">{company}</td>'
+            f'<td style="{_cell(row.get("pe_score", 5))}">{pe}</td>'
+            f'<td style="{_cell(row.get("pb_score", 5))}">{pb}</td>'
+            f'<td style="{_cell(row.get("roe_score", 5))}">{roe}</td>'
+            f'<td style="{_cell(row.get("de_score", 5))}">{de}</td>'
+            f'<td style="{_cell(row.get("growth_score", 5))}">{gr}</td>'
+            f'<td style="{_cell(row.get("week52_score", 5))}">{w52}</td>'
+            f'<td style="{_cell(row.get("value_score", 5))};font-weight:800">{vs}</td>'
+            f'<td style="{_r_style.get(rating, "")}">'
+            f'{_r_emoji.get(rating, "")} {rating}</td>'
+            f'</tr>'
+        )
+
+    return (
+        '<div class="table-wrapper">'
+        '<table class="stocks-table">'
+        '<thead><tr>'
+        '<th class="sc-rank">#</th>'
+        '<th class="sc-sym">Symbol</th>'
+        '<th class="sc-co">Company</th>'
+        '<th>P/E</th>'
+        '<th>P/B</th>'
+        '<th>ROE %</th>'
+        '<th>D/E</th>'
+        '<th>Rev Gr%</th>'
+        '<th>52W Pos</th>'
+        '<th>Score</th>'
+        '<th>Rating</th>'
+        '</tr></thead>'
+        f'<tbody>{rows_html}</tbody>'
+        '</table>'
+        '</div>'
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Insight helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -854,25 +1051,77 @@ _render_stats(scored_df, skipped_count)
 # ─────────────────────────────────────────────────────────────────────────────
 with st.expander("ℹ️ How scores are calculated — click to expand"):
     st.markdown("""
-    Each stock is scored across **6 fundamental factors**, each rated **1–10**.
-    Missing data defaults to a neutral **5**.
-    The **Value Score** is the equal-weighted average.
-
-    | # | Factor | What it measures | Score 10 means… | Score 1 means… |
-    |---|--------|-----------------|-----------------|----------------|
-    | 1 | **P/E Ratio** | Price paid per ₹1 of earnings | P/E < 10 (very cheap) | P/E ≥ 30 (very expensive) |
-    | 2 | **P/B Ratio** | Price vs book value | P/B < 1 (below book) | P/B ≥ 5 (very premium) |
-    | 3 | **ROE (%)** | Capital efficiency | ROE > 25% (excellent) | ROE ≤ 10% (poor) |
-    | 4 | **Debt/Equity** | Financial leverage | D/E < 0.5 (low debt) | D/E ≥ 2.0 (high risk) |
-    | 5 | **Revenue Growth** | Business momentum | Growth > 20% (strong) | Growth ≤ 5% (stagnant) |
-    | 6 | **52W Position** | Entry point quality | Near 52W low (buy zone) | Near 52W high (sell zone) |
-
-    **Ratings:**
-    &nbsp; 🟢 **Strong Buy** ≥ 8.0 &nbsp;·&nbsp;
-    🟢 **Buy** ≥ 6.0 &nbsp;·&nbsp;
-    🟡 **Hold** ≥ 4.0 &nbsp;·&nbsp;
-    🔴 **Avoid** < 4.0
-    """)
+<div>
+<p class="sg-intro">
+Each stock is scored across <b>6 fundamental factors</b>, each rated <b>1–10</b>.
+Missing data defaults to a neutral <b>5</b>.
+The <b>Value Score</b> is the equal-weighted average of all six factors.
+</p>
+<div class="sg-grid">
+  <div class="sg-item">
+    <div class="sg-name">P/E Ratio</div>
+    <div class="sg-desc">How much you pay per ₹1 of company profit. Lower is cheaper.</div>
+    <div class="sg-tiers">
+      <span class="sgt-g">🟢 Below 15 — cheap</span>
+      <span class="sgt-y">🟡 15 – 30 — fair</span>
+      <span class="sgt-r">🔴 Above 30 — expensive</span>
+    </div>
+  </div>
+  <div class="sg-item">
+    <div class="sg-name">P/B Ratio</div>
+    <div class="sg-desc">Price vs book value of assets. Below 1 means trading below asset value.</div>
+    <div class="sg-tiers">
+      <span class="sgt-g">🟢 Below 2 — undervalued</span>
+      <span class="sgt-y">🟡 2 – 5 — fair</span>
+      <span class="sgt-r">🔴 Above 5 — premium</span>
+    </div>
+  </div>
+  <div class="sg-item">
+    <div class="sg-name">ROE %</div>
+    <div class="sg-desc">Profit generated per ₹1 of shareholder equity. Higher = more efficient.</div>
+    <div class="sg-tiers">
+      <span class="sgt-g">🟢 Above 20% — excellent</span>
+      <span class="sgt-y">🟡 10 – 20% — average</span>
+      <span class="sgt-r">🔴 Below 10% — poor</span>
+    </div>
+  </div>
+  <div class="sg-item">
+    <div class="sg-name">D/E Ratio</div>
+    <div class="sg-desc">Total debt divided by equity. Lower means less financial risk.</div>
+    <div class="sg-tiers">
+      <span class="sgt-g">🟢 Below 0.5 — low debt</span>
+      <span class="sgt-y">🟡 0.5 – 1.5 — moderate</span>
+      <span class="sgt-r">🔴 Above 2 — high risk</span>
+    </div>
+  </div>
+  <div class="sg-item">
+    <div class="sg-name">Rev Growth %</div>
+    <div class="sg-desc">Year-on-year revenue change. Positive = business is expanding.</div>
+    <div class="sg-tiers">
+      <span class="sgt-g">🟢 Above 15% — strong</span>
+      <span class="sgt-y">🟡 5 – 15% — moderate</span>
+      <span class="sgt-r">🔴 Below 5% — stagnant</span>
+    </div>
+  </div>
+  <div class="sg-item">
+    <div class="sg-name">52W Position</div>
+    <div class="sg-desc">Where current price sits in the 52-week range. 0% = at the year's low.</div>
+    <div class="sg-tiers">
+      <span class="sgt-g">🟢 Below 30% — buy zone</span>
+      <span class="sgt-y">🟡 30 – 70% — mid range</span>
+      <span class="sgt-r">🔴 Above 70% — near high</span>
+    </div>
+  </div>
+</div>
+<div class="sg-ratings">
+  <b>Ratings:</b>
+  <span class="sgr-sb">🟢 Strong Buy ≥ 8.0</span>
+  <span class="sgr-b">🟢 Buy ≥ 6.0</span>
+  <span class="sgr-h">🟡 Hold ≥ 4.0</span>
+  <span class="sgr-av">🔴 Avoid &lt; 4.0</span>
+</div>
+</div>
+    """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -970,11 +1219,11 @@ st.markdown("""
   <span class="lc lc-g">■ Good score ≥ 7</span>
   <span class="lc lc-y">■ Neutral 4–6</span>
   <span class="lc lc-r">■ Poor &lt; 4</span>
-  <span style="font-size:.68rem;color:#5a8099;margin-left:6px;">· Click any column header to sort</span>
+  <span style="font-size:.68rem;color:#5a8099;margin-left:6px;">· Scroll right to see all metrics — Company name stays pinned</span>
 </div>
 """, unsafe_allow_html=True)
 
-st.dataframe(_build_table(scored_df), use_container_width=True, hide_index=True)
+st.markdown(_render_table_html(scored_df), unsafe_allow_html=True)
 
 st.divider()
 
