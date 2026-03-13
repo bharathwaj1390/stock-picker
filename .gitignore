@@ -1,0 +1,103 @@
+# ==============================================================
+# NSE Stock Screener — .gitignore
+# ==============================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Environment variables (NEVER commit .env) ---
+.env
+.env.local
+.env.*.local
+
+# --- Streamlit secrets (may contain API keys) ---
+.streamlit/secrets.toml
+
+# --- Disk cache (auto-generated, can be large) ---
+.cache/
+
+# --- Logs (auto-generated) ---
+logs/
+*.log
+
+# --- Test artefacts ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+*.py,cover
+nosetests.xml
+test-results/
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# --- Windows ---
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Jupyter ---
+.ipynb_checkpoints
+*.ipynb
+
+# --- Distribution ---
+*.whl
+*.tar.gz
+
+# --- Type stubs ---
+*.pyi
+py.typed
+
+# --- mypy ---
+.mypy_cache/
+.dmypy.json
+dmypy.json

@@ -1,0 +1,24 @@
+[theme]
+# Dark theme — standard for trading/financial dashboards
+primaryColor = "#00d4aa"
+backgroundColor = "#0a1628"
+secondaryBackgroundColor = "#0d1a2e"
+textColor = "#e0f0fa"
+font = "sans serif"
+
+[server]
+headless = true
+runOnSave = false
+# Increase limit for large dataframes (500-stock universe)
+maxUploadSize = 50
+
+[browser]
+gatherUsageStats = false
+
+[runner]
+# Disable magic — all st.* calls are explicit
+magicEnabled = false
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
