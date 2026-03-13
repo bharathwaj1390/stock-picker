@@ -330,9 +330,16 @@ footer { visibility: hidden; }
 }
 .stocks-table th:nth-child(-n+3) { text-align: left; }
 /* CSS variable drives row background — inherited by every td including sticky ones */
-.stocks-table tbody tr          { --rbg: #080f1e; }
+.stocks-table tbody tr               { --rbg: #080f1e; }
 .stocks-table tbody tr:nth-child(even) { --rbg: #0b1425; }
-.stocks-table tbody tr:hover    { --rbg: rgba(0,212,170,0.07); }
+/* Hover only on real pointer devices — prevents "stuck highlight" on mobile touch-scroll */
+@media (hover: hover) {
+    .stocks-table tbody tr:hover { --rbg: #0a2030; }
+}
+/* Sticky cells must always be fully opaque — stops coloured cells bleeding through */
+.stocks-table tbody tr:hover .sc-rank,
+.stocks-table tbody tr:hover .sc-sym,
+.stocks-table tbody tr:hover .sc-co { background: #0a2030 !important; }
 .stocks-table td {
     padding: .55rem .6rem;
     white-space: nowrap;
