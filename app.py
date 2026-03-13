@@ -235,6 +235,69 @@ footer { visibility: hidden; }
     border-top: 1px solid rgba(255,255,255,0.07);
     font-size: .79rem; color: #9abccc; line-height: 1.7;
 }
+
+/* ── Responsive grids (replaces st.columns for stats + picks) ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin: 1rem 0 1.5rem;
+}
+.picks-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+/* ── Breakpoint: large tablet (≤ 1100px) ── */
+@media (max-width: 1100px) {
+    .picks-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── Breakpoint: tablet (≤ 900px) ── */
+@media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .col-guide  { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── Breakpoint: small tablet / large phone (≤ 768px) ── */
+@media (max-width: 768px) {
+    .block-container { padding: 0.8rem 0.8rem 2rem !important; }
+    .hero-chart  { display: none; }
+    .hero-banner { padding: 1.1rem 1.2rem; border-radius: 12px; }
+    .page-title  { font-size: 1.65rem; letter-spacing: -.3px; }
+    .hero-eyebrow { font-size: .6rem; letter-spacing: 1.2px; }
+    .col-guide   { grid-template-columns: repeat(3, 1fr); }
+    .cg-desc     { min-height: unset; }
+    .insight-wrap { padding: 1rem 1.1rem; }
+    .factor-row  { grid-template-columns: 100px 1fr 44px; gap: 8px; }
+}
+
+/* ── Breakpoint: phone landscape (≤ 640px) ── */
+@media (max-width: 640px) {
+    .picks-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Breakpoint: phone portrait (≤ 480px) ── */
+@media (max-width: 480px) {
+    .block-container { padding: 0.5rem 0.5rem 2rem !important; }
+    .hero-banner { padding: .9rem 1rem; border-radius: 10px; }
+    .page-title  { font-size: 1.3rem; letter-spacing: -.2px; }
+    .hero-eyebrow { font-size: .55rem; letter-spacing: 1px; }
+    .page-subtitle { font-size: .7rem; }
+    .stats-grid  { grid-template-columns: repeat(2, 1fr); }
+    .picks-grid  { grid-template-columns: repeat(2, 1fr); }
+    .col-guide   { grid-template-columns: repeat(2, 1fr); }
+    .pick-score  { font-size: 2.2rem; }
+    .factor-row  { grid-template-columns: 82px 1fr 40px; gap: 7px; }
+    .factor-name { font-size: .65rem; }
+    .insight-wrap { padding: .85rem .9rem; }
+    .insight-sym  { font-size: 1.4rem; }
+    .insight-big  { font-size: 2rem; }
+    .sec-head    { font-size: .7rem; }
+    .s-val       { font-size: 1.7rem; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -424,35 +487,33 @@ def _fmt(val, fmt: str) -> str:
 
 
 def _render_stats(scored_df: pd.DataFrame, skipped: int) -> None:
-    n_sb   = int((scored_df["rating"] == "Strong Buy").sum())
-    n_b    = int((scored_df["rating"] == "Buy").sum())
-    n_h    = int((scored_df["rating"] == "Hold").sum())
-    n_av   = int((scored_df["rating"] == "Avoid").sum())
-    n_tot  = len(scored_df)
+    n_sb  = int((scored_df["rating"] == "Strong Buy").sum())
+    n_b   = int((scored_df["rating"] == "Buy").sum())
+    n_h   = int((scored_df["rating"] == "Hold").sum())
+    n_av  = int((scored_df["rating"] == "Avoid").sum())
+    n_tot = len(scored_df)
 
     items = [
-        ("c-total", n_tot,   "Stocks Analysed"),
-        ("c-sbuy",  n_sb,    "Strong Buy"),
-        ("c-buy",   n_b,     "Buy"),
-        ("c-hold",  n_h,     "Hold"),
-        ("c-avoid", n_av,    "Avoid"),
-        ("c-gap",   skipped, "Data N/A"),
+        ("c-total", n_tot,  "Stocks Analysed"),
+        ("c-sbuy",  n_sb,   "Strong Buy"),
+        ("c-buy",   n_b,    "Buy"),
+        ("c-hold",  n_h,    "Hold"),
+        ("c-avoid", n_av,   "Avoid"),
+        ("c-gap",   skipped,"Data N/A"),
     ]
-    cols = st.columns(6)
-    for col, (css, val, lbl) in zip(cols, items):
-        with col:
-            st.markdown(
-                f'<div class="stat-card {css}">'
-                f'<div class="s-val">{val}</div>'
-                f'<div class="s-lbl">{lbl}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+    cards = "".join(
+        f'<div class="stat-card {css}">'
+        f'<div class="s-val">{val}</div>'
+        f'<div class="s-lbl">{lbl}</div>'
+        f'</div>'
+        for css, val, lbl in items
+    )
+    st.markdown(f'<div class="stats-grid">{cards}</div>', unsafe_allow_html=True)
 
 
 def _render_top5(scored_df: pd.DataFrame) -> None:
-    top5 = scored_df.head(5)
-    cols = st.columns(5)
+    top5  = scored_df.head(5)
+    cards = ""
 
     for i, (_, row) in enumerate(top5.iterrows()):
         rating  = row.get("rating", "Hold")
@@ -460,30 +521,30 @@ def _render_top5(scored_df: pd.DataFrame) -> None:
         symbol  = str(row["Symbol"]).replace(".NS", "")
         company = (row.get("Company") or "")[:30]
 
-        pe_s  = _fmt(row.get("PE Ratio"),          "{:.1f}")
-        roe_s = _fmt(row.get("ROE (%)"),            "{:.1f}%")
-        de_s  = _fmt(row.get("Debt/Equity"),        "{:.2f}")
-        gr_s  = _fmt(row.get("Revenue Growth (%)"), "{:.1f}%")
+        pe_s  = _fmt(row.get("PE Ratio"),           "{:.1f}")
+        roe_s = _fmt(row.get("ROE (%)"),             "{:.1f}%")
+        de_s  = _fmt(row.get("Debt/Equity"),         "{:.2f}")
+        gr_s  = _fmt(row.get("Revenue Growth (%)"),  "{:.1f}%")
 
-        card = f"""
-        <div class="pick-card">
-          <div class="pick-rank">#{i + 1} &nbsp;·&nbsp; Top Pick</div>
-          <div class="pick-sym">{symbol}</div>
-          <div class="pick-co">{company or "&nbsp;"}</div>
-          <div class="pick-score">{row['value_score']:.1f}<small> / 10</small></div>
-          <span class="pick-badge {bcls}">{rating}</span>
-          <div class="pick-mets">
-            <span class="pm"><b>P/E</b>&nbsp;{pe_s}</span>
-            <span class="pm"><b>ROE</b>&nbsp;{roe_s}</span>
-            <span class="pm"><b>D/E</b>&nbsp;{de_s}</span>
-            <span class="pm"><b>Rev&nbsp;Gr</b>&nbsp;{gr_s}</span>
-          </div>
-          <hr class="pick-sep">
-          <div class="pick-reason">{_reason(row)}</div>
-        </div>
-        """
-        with cols[i]:
-            st.markdown(card, unsafe_allow_html=True)
+        cards += (
+            f'<div class="pick-card">'
+            f'<div class="pick-rank">#{i + 1} &nbsp;·&nbsp; Top Pick</div>'
+            f'<div class="pick-sym">{symbol}</div>'
+            f'<div class="pick-co">{company or "&nbsp;"}</div>'
+            f'<div class="pick-score">{row["value_score"]:.1f}<small> / 10</small></div>'
+            f'<span class="pick-badge {bcls}">{rating}</span>'
+            f'<div class="pick-mets">'
+            f'<span class="pm"><b>P/E</b>&nbsp;{pe_s}</span>'
+            f'<span class="pm"><b>ROE</b>&nbsp;{roe_s}</span>'
+            f'<span class="pm"><b>D/E</b>&nbsp;{de_s}</span>'
+            f'<span class="pm"><b>Rev&nbsp;Gr</b>&nbsp;{gr_s}</span>'
+            f'</div>'
+            f'<hr class="pick-sep">'
+            f'<div class="pick-reason">{_reason(row)}</div>'
+            f'</div>'
+        )
+
+    st.markdown(f'<div class="picks-grid">{cards}</div>', unsafe_allow_html=True)
 
 
 def _build_table(scored_df: pd.DataFrame):
