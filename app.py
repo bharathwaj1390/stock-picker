@@ -6,6 +6,7 @@ from data.stocks import get_symbols
 from data.fetcher import fetch_stock_data, clear_cache
 from analysis.scorer import score_stocks
 from utils.date_utils import get_market_status
+from utils.indian_formatting import format_price
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config
@@ -406,11 +407,14 @@ footer { visibility: hidden; }
 .sc-co {
     position: sticky; left: 96px; z-index: 2;
     min-width: 118px; width: 118px;
-    max-width: 118px; overflow: hidden; text-overflow: ellipsis;
+    max-width: 118px;
     color: #94a3b8 !important;
     border-right: 1px solid rgba(255,255,255,0.07) !important;
     font-size: .76rem;
+    white-space: normal;
 }
+.sc-co-name   { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.sc-co-sector { display: block; font-size: .6rem; color: #64748b; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 .stocks-table thead .sc-rank,
 .stocks-table thead .sc-sym,
 .stocks-table thead .sc-co {
@@ -885,8 +889,10 @@ def _render_table_html(scored_df: pd.DataFrame) -> str:
     for i, (_, row) in enumerate(df.iterrows()):
         symbol  = str(row["Symbol"]).replace(".NS", "")
         company = str(row.get("Company") or "")[:22]
+        sector  = str(row.get("Sector") or "")[:20]
         rating  = str(row.get("rating", "Hold"))
         w52pos  = _52w_pct(row)
+        price   = format_price(row.get("Current Price"))
 
         pe  = _f(row.get("PE Ratio"),           "{:.1f}")
         pb  = _f(row.get("PB Ratio"),            "{:.2f}")
@@ -896,11 +902,14 @@ def _render_table_html(scored_df: pd.DataFrame) -> str:
         w52 = _f(w52pos,                         "{:.0f}%")
         vs  = f"{row.get('value_score', 0):.2f}"
 
+        _sector_html = f'<span class="sc-co-sector">{sector}</span>' if sector else ""
         rows_html += (
             f'<tr>'
             f'<td class="sc-rank">{i + 1}</td>'
             f'<td class="sc-sym">{symbol}</td>'
-            f'<td class="sc-co" title="{company}">{company}</td>'
+            f'<td class="sc-co" title="{company}">'
+            f'<span class="sc-co-name">{company}</span>{_sector_html}</td>'
+            f'<td style="{_cell(row.get("week52_score", 5))};text-align:right">{price}</td>'
             f'<td style="{_cell(row.get("pe_score", 5))}">{pe}</td>'
             f'<td style="{_cell(row.get("pb_score", 5))}">{pb}</td>'
             f'<td style="{_cell(row.get("roe_score", 5))}">{roe}</td>'
@@ -920,6 +929,7 @@ def _render_table_html(scored_df: pd.DataFrame) -> str:
         '<th class="sc-rank">#</th>'
         '<th class="sc-sym">Symbol</th>'
         '<th class="sc-co">Company</th>'
+        '<th>Price ₹</th>'
         '<th>P/E</th>'
         '<th>P/B</th>'
         '<th>ROE %</th>'
@@ -1341,9 +1351,9 @@ st.markdown("""
     <div class="cg-full">Value Score / 10</div>
     <div class="cg-desc">Equal-weighted average of all 6 factors. The overall quality rating.</div>
     <div class="cg-tiers">
-      <span class="cg-t cg-tg">🟢 7–10 — Strong Buy/Buy</span>
-      <span class="cg-t cg-ty">🟡 4–6 — Hold</span>
-      <span class="cg-t cg-tr">🔴 Below 4 — Avoid</span>
+      <span class="cg-t cg-tg">🟢 ≥ 8 Strong Buy · ≥ 6 Buy</span>
+      <span class="cg-t cg-ty">🔵 ≥ 5 Watch · 🟡 ≥ 4 Hold</span>
+      <span class="cg-t cg-tr">🔴 ≥ 2 Avoid · &lt; 2 Strong Avoid</span>
     </div>
   </div>
 </div>
@@ -1391,7 +1401,35 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown(_render_table_html(scored_df), unsafe_allow_html=True)
+# ── Rating filter ──────────────────────────────────────────────────────────
+_RATING_OPTS = ["All", "Strong Buy", "Buy", "Watch", "Hold", "Avoid", "Strong Avoid"]
+_sel_rating = st.radio(
+    "Filter by Rating",
+    _RATING_OPTS,
+    horizontal=True,
+    label_visibility="collapsed",
+    key="rating_filter",
+)
+_table_df = (
+    scored_df if _sel_rating == "All"
+    else scored_df[scored_df["rating"] == _sel_rating]
+)
+
+# ── Count + export row ──────────────────────────────────────────────────────
+_cnt_col, _dl_col = st.columns([5, 1])
+with _cnt_col:
+    if _sel_rating != "All":
+        st.caption(f"Showing **{len(_table_df)}** of {len(scored_df)} stocks")
+with _dl_col:
+    st.download_button(
+        "⬇ Export CSV",
+        data=_table_df.to_csv(index=False),
+        file_name=f"nse_screen_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+st.markdown(_render_table_html(_table_df), unsafe_allow_html=True)
 
 st.divider()
 
