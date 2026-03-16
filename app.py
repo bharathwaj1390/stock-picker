@@ -1886,6 +1886,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Handle heatmap bar click: pre-populate sector filter BEFORE widgets render
+_hm_pending = st.session_state.pop("_hm_click", None)
+if _hm_pending and _hm_pending in scored_df["Sector"].dropna().unique():
+    st.session_state["tbl_sector"] = [_hm_pending]
+
 # ── Filter bar — row 1: search · sector · min score ────────────────────────
 _SORT_MAP = {
     "Value Score": "value_score",
@@ -1982,7 +1987,10 @@ st.divider()
 # Sector Heatmap
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="sec-head">🗂️ &nbsp;Sector Heatmap</div>', unsafe_allow_html=True)
-st.caption("Average Value Score per sector — green = strong, red = weak. Click a bar to explore.")
+st.caption(
+    "Average Value Score per sector — colours are **relative** within the current screen "
+    "(best sector = green, worst = red). Click any bar to filter the table by that sector."
+)
 
 _hm_data = scored_df.dropna(subset=["Sector"]).copy()
 if not _hm_data.empty:
@@ -1992,22 +2000,27 @@ if not _hm_data.empty:
         .reset_index()
         .sort_values("mean", ascending=True)
     )
-    _hm_colors = [
-        "#f87171" if s < 4 else "#fbbf24" if s < 7 else "#34d399"
-        for s in _hm_grp["mean"]
-    ]
-    _fig_hm = go.Figure(go.Bar(
-        x=_hm_grp["mean"],
+    _scores_list = _hm_grp["mean"].tolist()
+    _hm_fig = go.Figure(go.Bar(
+        x=_scores_list,
         y=_hm_grp["Sector"],
         orientation="h",
-        marker_color=_hm_colors,
-        marker_line_width=0,
-        text=[f'  {s:.1f}  ({n} stocks)' for s, n in zip(_hm_grp["mean"], _hm_grp["count"])],
+        marker=dict(
+            # Continuous colorscale mapped to the ACTUAL data range so we
+            # always see contrast: worst sector → red, best sector → green.
+            color=_scores_list,
+            colorscale=[[0.0, "#f87171"], [0.5, "#fbbf24"], [1.0, "#34d399"]],
+            cmin=min(_scores_list),
+            cmax=max(_scores_list),
+            showscale=False,
+            line=dict(width=0),
+        ),
+        text=[f'  {s:.2f}  ({n} stocks)' for s, n in zip(_scores_list, _hm_grp["count"])],
         textposition="auto",
         textfont=dict(color="#f1f5f9", size=11),
         hovertemplate="<b>%{y}</b><br>Avg Score: %{x:.2f}<extra></extra>",
     ))
-    _fig_hm.update_layout(
+    _hm_fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#94a3b8", size=12),
@@ -2021,7 +2034,24 @@ if not _hm_data.empty:
         yaxis=dict(gridcolor="rgba(0,0,0,0)", tickfont=dict(color="#94a3b8")),
         height=max(240, len(_hm_grp) * 34 + 40),
     )
-    st.plotly_chart(_fig_hm, use_container_width=True, config={"displayModeBar": False})
+    _hm_event = st.plotly_chart(
+        _hm_fig,
+        use_container_width=True,
+        config={"displayModeBar": False},
+        on_select="rerun",
+        key="hm_chart",
+    )
+    # When the user clicks a bar, store the sector and rerun so the filter
+    # bar (rendered earlier in the page) picks it up via _hm_pending above.
+    try:
+        _pts = (_hm_event or {}).get("selection", {}).get("points", [])
+        if _pts:
+            _clicked_sector = _pts[0].get("y")
+            if _clicked_sector and st.session_state.get("_hm_click") != _clicked_sector:
+                st.session_state["_hm_click"] = _clicked_sector
+                st.rerun()
+    except Exception:
+        pass
 else:
     st.caption("No sector data available for the current screen.")
 
