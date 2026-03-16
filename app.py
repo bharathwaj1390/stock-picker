@@ -2,6 +2,7 @@ import math
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import plotly.graph_objects as go
 from datetime import datetime
 
 from data.stocks import get_symbols
@@ -527,6 +528,92 @@ footer { visibility: hidden; }
 /* ═══ PRICE IN TOP5 PICKS & INSIGHTS ═══ */
 .pick-price    { font-size: 1.05rem; font-weight: 800; color: #f1f5f9; margin: .2rem 0 .05rem; letter-spacing: -.2px; }
 .insight-price { font-size: .88rem; font-weight: 700; color: #94a3b8; margin-top: .3rem; }
+
+/* ═══ MARKET INDICES PANEL ═══ */
+.mkt-panel {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 1.2rem;
+}
+.mkt-primary-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+    flex-wrap: wrap;
+}
+.mkt-primary-tile {
+    flex: 0 0 auto;
+    padding-right: 1.4rem;
+    margin-right: 1.4rem;
+    border-right: 1px solid rgba(255,255,255,0.08);
+}
+.mkt-pt-name  { font-size:.52rem; font-weight:800; text-transform:uppercase; letter-spacing:1.4px; color:#64748b; margin-bottom:.22rem; }
+.mkt-pt-price { font-size:1.55rem; font-weight:900; color:#f1f5f9; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
+.mkt-pt-chg   { font-size:.78rem; font-weight:700; margin-top:.28rem; }
+.mkt-mood-col { text-align:center; flex:0 0 auto; padding:0 1.4rem; border-right:1px solid rgba(255,255,255,0.08); margin-right:1.4rem; }
+.mkt-bull { color:#34d399; }
+.mkt-bear { color:#f87171; }
+.mkt-up   { color:#34d399; }
+.mkt-dn   { color:#f87171; }
+.mkt-sentiment  { font-size:.9rem; font-weight:900; letter-spacing:2px; text-transform:uppercase; margin-top:.15rem; }
+.mkt-mood-sub   { font-size:.55rem; color:#64748b; margin-top:2px; }
+.mkt-days-col   { flex:1; min-width:0; }
+.mkt-days-lbl   { font-size:.52rem; text-transform:uppercase; letter-spacing:.8px; color:#64748b; margin-bottom:.45rem; }
+.mkt-days-row   { display:flex; gap:.55rem; }
+.mkt-day-item   { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.mkt-day-circle { width:22px; height:22px; border-radius:6px; }
+.mkt-day-up { background:rgba(16,185,129,0.2); border:1px solid rgba(52,211,153,0.35); }
+.mkt-day-dn { background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.3); }
+.mkt-day-lbl { font-size:.47rem; text-transform:uppercase; letter-spacing:.4px; color:#64748b; }
+.mkt-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(255,255,255,0.06);
+}
+.mkt-cell {
+    background: #0A0812;
+    padding: .7rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    cursor: default;
+    transition: background .18s;
+}
+.mkt-cell:hover { background: rgba(139,92,246,0.07); }
+.mkt-cell-hdr   { display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
+.mkt-cell-name  { font-size:.57rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#64748b; }
+.mkt-cell-chg   { font-size:.68rem; font-weight:700; }
+.mkt-cell-price { font-size:.92rem; font-weight:800; color:#f1f5f9; font-variant-numeric:tabular-nums; margin-top:3px; }
+.mkt-cell-empty { color:#475569; font-size:.75rem; }
+@media (max-width:700px) {
+    .mkt-primary-row { gap:.8rem; }
+    .mkt-primary-tile { border-right:none; padding-right:0; margin-right:0; }
+    .mkt-mood-col { border-right:none; padding:0; }
+    .mkt-days-col { width:100%; }
+    .mkt-grid { grid-template-columns:repeat(2,1fr); }
+}
+@media (max-width:400px) { .mkt-grid { grid-template-columns:1fr; } }
+
+/* ═══ PRESET STRATEGY PILLS ═══ */
+.preset-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:.5rem; }
+
+/* ═══ FILTER BAR ═══ */
+.filter-section-lbl { font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.9px; color:#64748b; margin-bottom:.3rem; }
+
+/* ═══ HEATMAP & COMPARISON SECTIONS ═══ */
+.chart-section-wrap {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem 1rem;
+    margin-bottom: 1.2rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -545,6 +632,27 @@ _BADGE_CLASS = {
     "Hold":         "b-h",
     "Avoid":        "b-av",
     "Strong Avoid": "b-sa",
+}
+
+# Market indices panel — ordered for the 3×3 grid display
+_MARKET_TICKERS = [
+    ("^NSEI",      "NIFTY 50",      False),   # (symbol, label, is_forex)
+    ("^CNX100",    "NIFTY 100",     False),
+    ("^NSEBANK",   "NIFTY Bank",    False),
+    ("USDINR=X",   "USD / INR",     True),
+    ("^CNXMIDCAP", "NIFTY Midcap",  False),
+    ("^CNXIT",     "NIFTY IT",      False),
+    ("GC=F",       "Gold (USD)",    True),
+    ("^CNXSC",     "NIFTY Smallcap",False),
+    ("^CNXPHARMA", "NIFTY Pharma",  False),
+]
+
+# Preset screening strategies — sets filter defaults when clicked
+_PRESETS = {
+    "🔍 Deep Value":    {"min_score": 5.0, "weights": [3, 2, 1, 1, 1, 2], "sort": "PE Ratio",            "asc": True},
+    "📈 Growth Quality":{"min_score": 5.0, "weights": [1, 1, 3, 1, 3, 1], "sort": "Revenue Growth (%)",  "asc": False},
+    "🛡️ Low Risk":      {"min_score": 4.0, "weights": [1, 1, 1, 3, 1, 3], "sort": "Debt/Equity",         "asc": True},
+    "💎 Quality Core":  {"min_score": 6.0, "weights": [2, 2, 3, 2, 2, 1], "sort": "value_score",         "asc": False},
 }
 
 
@@ -582,6 +690,44 @@ with st.sidebar:
         for key in ("scored_df", "last_refreshed", "index_label", "skipped_count"):
             st.session_state.pop(key, None)
         st.rerun()
+
+    st.divider()
+
+    # ── Preset Strategies ────────────────────────────────────────────────────
+    st.markdown('<div class="filter-section-lbl">⚡ Preset Strategies</div>', unsafe_allow_html=True)
+
+    def _apply_preset(pname: str) -> None:
+        cfg = _PRESETS[pname]
+        st.session_state["min_score"] = cfg["min_score"]
+        st.session_state["sort_col"]  = cfg["sort"]
+        st.session_state["sort_asc"]  = cfg["asc"]
+        for i, k in enumerate(["w_pe", "w_pb", "w_roe", "w_de", "w_gr", "w_w52"]):
+            st.session_state[k] = cfg["weights"][i]
+
+    _pc = st.columns(2)
+    for _pi, _pname in enumerate(_PRESETS):
+        with _pc[_pi % 2]:
+            st.button(
+                _pname, key=f"preset_{_pi}",
+                use_container_width=True,
+                on_click=_apply_preset, args=(_pname,),
+            )
+
+    # ── Custom Factor Weights ─────────────────────────────────────────────────
+    with st.expander("⚖️ Custom Factor Weights", expanded=False):
+        st.caption("Adjust the weight of each factor. Equal weights = 1.")
+
+        def _reset_weights() -> None:
+            for _k in ["w_pe", "w_pb", "w_roe", "w_de", "w_gr", "w_w52"]:
+                st.session_state[_k] = 1
+
+        st.button("↺ Reset to Equal", on_click=_reset_weights, use_container_width=True)
+        st.slider("P/E Ratio",     1, 5, 1, key="w_pe")
+        st.slider("P/B Ratio",     1, 5, 1, key="w_pb")
+        st.slider("ROE (%)",       1, 5, 1, key="w_roe")
+        st.slider("Debt/Equity",   1, 5, 1, key="w_de")
+        st.slider("Rev Growth",    1, 5, 1, key="w_gr")
+        st.slider("52W Position",  1, 5, 1, key="w_w52")
 
     st.divider()
 
@@ -708,6 +854,47 @@ def _fetch_nifty() -> dict | None:
         return None
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fetch_market_panel() -> dict:
+    """
+    Fetch current price, % change, 7-day sparkline, and last-5-day up/down
+    for every index in _MARKET_TICKERS.  Cached 1 h.
+    """
+    results = {}
+    for sym, name, is_forex in _MARKET_TICKERS:
+        try:
+            hist = yf.Ticker(sym).history(period="14d")
+            if hist.empty or len(hist) < 2:
+                continue
+            closes = hist["Close"].dropna()
+            prices = [float(p) for p in closes.tolist()]
+            current, prev = prices[-1], prices[-2]
+            change     = current - prev
+            change_pct = (change / prev) * 100 if prev else 0.0
+
+            # Last-5-day up/down circles
+            days = []
+            start = max(1, len(closes) - 5)
+            for i in range(start, len(closes)):
+                days.append({
+                    "label": closes.index[i].strftime("%a").upper()[:3],
+                    "up":    closes.iloc[i] >= closes.iloc[i - 1],
+                })
+
+            results[sym] = {
+                "name":       name,
+                "is_forex":   is_forex,
+                "price":      current,
+                "change":     change,
+                "change_pct": change_pct,
+                "prices":     prices[-7:],
+                "days":       days,
+            }
+        except Exception:
+            pass
+    return results
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Hero banner
 # ─────────────────────────────────────────────────────────────────────────────
@@ -800,46 +987,94 @@ if not _mkt["is_open"]:
     )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# NIFTY 50 index widget (always visible — fetched independently)
+# Market Indices Panel (always visible — fetched independently)
 # ─────────────────────────────────────────────────────────────────────────────
-_nifty = _fetch_nifty()
-if _nifty is not None:
-    _is_up      = _nifty["change_pct"] >= 0
-    _dir        = "▲" if _is_up else "▼"
-    _pill_cls   = "nifty-up" if _is_up else "nifty-dn"
-    _sent_cls   = "nifty-bull" if _is_up else "nifty-bear"
-    _sentiment  = "Bullish" if _is_up else "Bearish"
-    _price_disp = f"{_nifty['price']:,.2f}"
-    _chg_disp   = (
-        f"{_dir} {abs(_nifty['change']):,.2f} "
-        f"({abs(_nifty['change_pct']):.2f}%)"
-    )
-    _spark = (
-        _sparkline_svg(_nifty["prices"])
-        if len(_nifty.get("prices", [])) >= 2
-        else ""
-    )
-    _gauge = _gauge_svg(_nifty["change_pct"])
-    _spark_block = (
-        f'<div class="nifty-spark-section">'
-        f'<div class="nifty-spark-lbl">7-day trend</div>'
-        f'{_spark}'
+_panel = _fetch_market_panel()
+if _panel:
+    # ── Primary row: NIFTY 50 + NIFTY Bank tiles + gauge + day circles ──────
+    def _pt(sym: str) -> str:
+        d = _panel.get(sym, {})
+        if not d:
+            return ""
+        _up  = d["change_pct"] >= 0
+        _cls = "mkt-up" if _up else "mkt-dn"
+        _dir = "▲" if _up else "▼"
+        return (
+            f'<div class="mkt-primary-tile">'
+            f'<div class="mkt-pt-name">{d["name"]}</div>'
+            f'<div class="mkt-pt-price">{d["price"]:,.2f}</div>'
+            f'<div class="mkt-pt-chg {_cls}">'
+            f'{_dir} {abs(d["change_pct"]):.2f}%'
+            f'&ensp;<span style="opacity:.6;font-weight:500">'
+            f'({_dir} {abs(d["change"]):,.2f})</span></div>'
+            f'</div>'
+        )
+
+    _n50     = _panel.get("^NSEI", {})
+    _n50_chg = _n50.get("change_pct", 0)
+    _sent    = "Bullish" if _n50_chg >= 0 else "Bearish"
+    _scls    = "mkt-bull" if _n50_chg >= 0 else "mkt-bear"
+    _gauge   = _gauge_svg(_n50_chg)
+
+    # Day circles for NIFTY 50
+    _dcircles = ""
+    for _d in _n50.get("days", []):
+        _cc = "mkt-day-up" if _d["up"] else "mkt-day-dn"
+        _dcircles += (
+            f'<div class="mkt-day-item">'
+            f'<div class="mkt-day-circle {_cc}"></div>'
+            f'<div class="mkt-day-lbl">{_d["label"]}</div>'
+            f'</div>'
+        )
+    _days_html = (
+        f'<div class="mkt-days-col">'
+        f'<div class="mkt-days-lbl">5-Day Trend</div>'
+        f'<div class="mkt-days-row">{_dcircles}</div>'
         f'</div>'
-    ) if _spark else ""
+    ) if _dcircles else ""
+
+    _primary = (
+        f'<div class="mkt-primary-row">'
+        + _pt("^NSEI") + _pt("^NSEBANK")
+        + f'<div class="mkt-mood-col">{_gauge}'
+        f'<div class="mkt-sentiment {_scls}">{_sent}</div>'
+        f'<div class="mkt-mood-sub">Today\'s mood</div></div>'
+        + _days_html
+        + f'</div>'
+    )
+
+    # ── 3×3 grid of all indices ──────────────────────────────────────────────
+    _cells = ""
+    for _sym, _name, _is_fx in _MARKET_TICKERS:
+        _d = _panel.get(_sym, {})
+        if not _d:
+            _cells += f'<div class="mkt-cell mkt-cell-empty">{_name}<br><small>—</small></div>'
+            continue
+        _up  = _d["change_pct"] >= 0
+        _cls = "mkt-up" if _up else "mkt-dn"
+        _dir = "▲" if _up else "▼"
+        _chg = f"{_dir} {abs(_d['change_pct']):.2f}%"
+        if _sym == "USDINR=X":
+            _pf = f"₹{_d['price']:.4f}"
+        elif _sym == "GC=F":
+            _pf = f"${_d['price']:,.2f}"
+        else:
+            _pf = f"{_d['price']:,.2f}"
+        _spark = _sparkline_svg(_d["prices"], width=110, height=28) if len(_d.get("prices", [])) >= 2 else ""
+        _cells += (
+            f'<div class="mkt-cell">'
+            f'<div class="mkt-cell-hdr">'
+            f'<span class="mkt-cell-name">{_name}</span>'
+            f'<span class="mkt-cell-chg {_cls}">{_chg}</span>'
+            f'</div>'
+            f'{_spark}'
+            f'<div class="mkt-cell-price">{_pf}</div>'
+            f'</div>'
+        )
+
     st.markdown(
-        f'<div class="nifty-widget">'
-        f'<div class="nifty-section">'
-        f'<div class="nifty-idx-name">NIFTY 50</div>'
-        f'<div class="nifty-price-val">{_price_disp}</div>'
-        f'<div class="nifty-chg-pill {_pill_cls}">{_chg_disp}</div>'
-        f'</div>'
-        f'{_spark_block}'
-        f'<div class="nifty-gauge-section">'
-        f'{_gauge}'
-        f'<div class="nifty-sentiment {_sent_cls}">{_sentiment}</div>'
-        f'<div class="nifty-sent-sub">Today\'s market mood</div>'
-        f'</div>'
-        f'</div>',
+        f'<div class="mkt-panel">{_primary}'
+        f'<div class="mkt-grid">{_cells}</div></div>',
         unsafe_allow_html=True,
     )
 
@@ -877,6 +1112,27 @@ def _color(score) -> str:
     if s >= 7: return _GREEN
     if s >= 4: return _YELLOW
     return _RED
+
+
+def _rating_from_score(s: float) -> str:
+    if s >= 8.0: return "Strong Buy"
+    if s >= 6.0: return "Buy"
+    if s >= 5.0: return "Watch"
+    if s >= 4.0: return "Hold"
+    if s >= 2.0: return "Avoid"
+    return "Strong Avoid"
+
+
+def _apply_weights(df: pd.DataFrame, weights: list) -> pd.DataFrame:
+    """Recompute value_score and rating using custom per-factor weights."""
+    out   = df.copy()
+    w     = [max(1, int(x)) for x in weights]
+    cols  = ["pe_score", "pb_score", "roe_score", "de_score", "growth_score", "week52_score"]
+    total = sum(w)
+    out["value_score"] = sum(out[c] * wt for c, wt in zip(cols, w)) / total
+    out["value_score"] = out["value_score"].round(2)
+    out["rating"]      = out["value_score"].apply(_rating_from_score)
+    return out.sort_values("value_score", ascending=False).reset_index(drop=True)
 
 
 def _reason(row: pd.Series) -> str:
@@ -1093,6 +1349,7 @@ def _render_table_html(scored_df: pd.DataFrame) -> str:
         pe  = _f(row.get("PE Ratio"),           "{:.1f}")
         pb  = _f(row.get("PB Ratio"),            "{:.2f}")
         roe = _f(row.get("ROE (%)"),             "{:.1f}%")
+        div = _f(row.get("Dividend Yield (%)"),  "{:.2f}%")
         de  = _f(row.get("Debt/Equity"),         "{:.2f}")
         gr  = _f(row.get("Revenue Growth (%)"),  "{:.1f}%")
         w52 = _f(w52pos,                         "{:.0f}%")
@@ -1109,6 +1366,7 @@ def _render_table_html(scored_df: pd.DataFrame) -> str:
             f'<td style="{_cell(row.get("pe_score", 5))}">{pe}</td>'
             f'<td style="{_cell(row.get("pb_score", 5))}">{pb}</td>'
             f'<td style="{_cell(row.get("roe_score", 5))}">{roe}</td>'
+            f'<td style="text-align:right;color:#94a3b8">{div}</td>'
             f'<td style="{_cell(row.get("de_score", 5))}">{de}</td>'
             f'<td style="{_cell(row.get("growth_score", 5))}">{gr}</td>'
             f'<td style="{_cell(row.get("week52_score", 5))}">{w52}</td>'
@@ -1122,18 +1380,19 @@ def _render_table_html(scored_df: pd.DataFrame) -> str:
         '<div class="table-wrapper">'
         '<table class="stocks-table">'
         '<thead><tr>'
-        '<th class="sc-rank">#</th>'
-        '<th class="sc-sym">Symbol</th>'
-        '<th class="sc-co">Company</th>'
-        '<th>Price ₹</th>'
-        '<th>P/E</th>'
-        '<th>P/B</th>'
-        '<th>ROE %</th>'
-        '<th>D/E</th>'
-        '<th>Rev Gr%</th>'
-        '<th>52W Pos</th>'
-        '<th>Score</th>'
-        '<th>Rating</th>'
+        '<th class="sc-rank" title="Rank by Value Score">#</th>'
+        '<th class="sc-sym" title="NSE stock ticker">Symbol</th>'
+        '<th class="sc-co" title="Company name and sector">Company</th>'
+        '<th title="Current market price in INR">Price ₹</th>'
+        '<th title="Price/Earnings — how much you pay per ₹1 of profit. Lower = cheaper. Scored 1–10.">P/E</th>'
+        '<th title="Price/Book — how much you pay per ₹1 of assets. Below 1 = trading below book value. Scored 1–10.">P/B</th>'
+        '<th title="Return on Equity % — profit generated per ₹1 of shareholder equity. Higher = more efficient. Scored 1–10.">ROE %</th>'
+        '<th title="Dividend Yield % — annual dividend as a % of the share price. Informational only.">Div %</th>'
+        '<th title="Debt/Equity ratio — lower means less financial leverage and risk. Scored 1–10.">D/E</th>'
+        '<th title="Revenue Growth % YoY — positive means the business is expanding. Scored 1–10.">Rev Gr%</th>'
+        '<th title="52-Week Position % — 0% = at the year\'s low (best entry), 100% = at the year\'s high. Scored 1–10.">52W Pos</th>'
+        '<th title="Value Score (1–10) — equal-weighted average of all 6 factors. Higher = better value.">Score</th>'
+        '<th title="Rating based on the Value Score">Rating</th>'
         '</tr></thead>'
         f'<tbody>{rows_html}</tbody>'
         '</table>'
@@ -1343,6 +1602,19 @@ if analyse:
 # ─────────────────────────────────────────────────────────────────────────────
 scored_df     = st.session_state.get("scored_df")
 skipped_count = st.session_state.get("skipped_count", 0)
+
+# Apply custom factor weights when any weight differs from the default of 1
+if scored_df is not None:
+    _cw = [
+        st.session_state.get("w_pe",  1),
+        st.session_state.get("w_pb",  1),
+        st.session_state.get("w_roe", 1),
+        st.session_state.get("w_de",  1),
+        st.session_state.get("w_gr",  1),
+        st.session_state.get("w_w52", 1),
+    ]
+    if _cw != [1, 1, 1, 1, 1, 1]:
+        scored_df = _apply_weights(scored_df, _cw)
 
 if scored_df is None:
     st.markdown("""
@@ -1600,24 +1872,84 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Rating filter ──────────────────────────────────────────────────────────
-_RATING_OPTS = ["All", "Strong Buy", "Buy", "Watch", "Hold", "Avoid", "Strong Avoid"]
-_sel_rating = st.radio(
-    "Filter by Rating",
-    _RATING_OPTS,
-    horizontal=True,
-    label_visibility="collapsed",
-    key="rating_filter",
-)
-_table_df = (
-    scored_df if _sel_rating == "All"
-    else scored_df[scored_df["rating"] == _sel_rating]
-)
+# ── Filter bar — row 1: search · sector · min score ────────────────────────
+_SORT_MAP = {
+    "Value Score": "value_score",
+    "P/E Ratio":   "PE Ratio",
+    "P/B Ratio":   "PB Ratio",
+    "ROE %":       "ROE (%)",
+    "D/E Ratio":   "Debt/Equity",
+    "Rev Growth":  "Revenue Growth (%)",
+    "Price":       "Current Price",
+}
+
+_fb1, _fb2, _fb3 = st.columns([3, 3, 2])
+with _fb1:
+    _search = st.text_input(
+        "search", placeholder="🔍  Symbol or company name…",
+        label_visibility="collapsed", key="tbl_search",
+    )
+with _fb2:
+    _sectors = sorted(scored_df["Sector"].dropna().unique().tolist())
+    _sel_sectors = st.multiselect(
+        "sector", _sectors,
+        placeholder="All sectors…",
+        label_visibility="collapsed", key="tbl_sector",
+    )
+with _fb3:
+    if "min_score" not in st.session_state:
+        st.session_state["min_score"] = 0.0
+    _min_score = st.slider(
+        "min_score", 0.0, 10.0, step=0.5, format="Min score: %.1f",
+        label_visibility="collapsed", key="min_score",
+    )
+
+# ── Filter bar — row 2: rating · sort-by · direction ───────────────────────
+_fb4, _fb5, _fb6 = st.columns([5, 3, 1])
+with _fb4:
+    _RATING_OPTS = ["All", "Strong Buy", "Buy", "Watch", "Hold", "Avoid", "Strong Avoid"]
+    _sel_rating = st.radio(
+        "Rating", _RATING_OPTS, horizontal=True,
+        label_visibility="collapsed", key="rating_filter",
+    )
+with _fb5:
+    _default_sort = st.session_state.get("sort_col", "value_score")
+    _sort_labels  = list(_SORT_MAP.keys())
+    _sort_cols    = list(_SORT_MAP.values())
+    _sort_def_idx = _sort_cols.index(_default_sort) if _default_sort in _sort_cols else 0
+    _sort_lbl = st.selectbox(
+        "sort", _sort_labels, index=_sort_def_idx,
+        label_visibility="collapsed", key="tbl_sort_lbl",
+    )
+    _sort_col_key = _SORT_MAP[_sort_lbl]
+with _fb6:
+    _sort_asc = st.checkbox("↑ Asc", key="sort_asc")
+
+# ── Apply all filters ───────────────────────────────────────────────────────
+_table_df = scored_df.copy()
+if _sel_rating != "All":
+    _table_df = _table_df[_table_df["rating"] == _sel_rating]
+if _search:
+    _q = _search.strip().upper()
+    _table_df = _table_df[
+        _table_df["Symbol"].str.upper().str.contains(_q, na=False) |
+        _table_df["Company"].fillna("").str.upper().str.contains(_q, na=False)
+    ]
+if _sel_sectors:
+    _table_df = _table_df[_table_df["Sector"].isin(_sel_sectors)]
+if _min_score > 0:
+    _table_df = _table_df[_table_df["value_score"] >= _min_score]
+_table_df = _table_df.sort_values(
+    _sort_col_key, ascending=_sort_asc, na_position="last"
+).reset_index(drop=True)
 
 # ── Count + export row ──────────────────────────────────────────────────────
 _cnt_col, _dl_col = st.columns([5, 1])
 with _cnt_col:
-    if _sel_rating != "All":
+    _active_filters = any([
+        _sel_rating != "All", _search, _sel_sectors, _min_score > 0,
+    ])
+    if _active_filters:
         st.caption(f"Showing **{len(_table_df)}** of {len(scored_df)} stocks")
 with _dl_col:
     st.download_button(
@@ -1629,6 +1961,119 @@ with _dl_col:
     )
 
 st.markdown(_render_table_html(_table_df), unsafe_allow_html=True)
+
+st.divider()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sector Heatmap
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown('<div class="sec-head">🗂️ &nbsp;Sector Heatmap</div>', unsafe_allow_html=True)
+st.caption("Average Value Score per sector — green = strong, red = weak. Click a bar to explore.")
+
+_hm_data = scored_df.dropna(subset=["Sector"]).copy()
+if not _hm_data.empty:
+    _hm_grp = (
+        _hm_data.groupby("Sector")["value_score"]
+        .agg(mean="mean", count="count")
+        .reset_index()
+        .sort_values("mean", ascending=True)
+    )
+    _hm_colors = [
+        "#f87171" if s < 4 else "#fbbf24" if s < 7 else "#34d399"
+        for s in _hm_grp["mean"]
+    ]
+    _fig_hm = go.Figure(go.Bar(
+        x=_hm_grp["mean"],
+        y=_hm_grp["Sector"],
+        orientation="h",
+        marker_color=_hm_colors,
+        marker_line_width=0,
+        text=[f'  {s:.1f}  ({n} stocks)' for s, n in zip(_hm_grp["mean"], _hm_grp["count"])],
+        textposition="auto",
+        textfont=dict(color="#f1f5f9", size=11),
+        hovertemplate="<b>%{y}</b><br>Avg Score: %{x:.2f}<extra></extra>",
+    ))
+    _fig_hm.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#94a3b8", size=12),
+        margin=dict(l=10, r=20, t=10, b=10),
+        xaxis=dict(
+            range=[0, 10],
+            gridcolor="rgba(255,255,255,0.06)",
+            tickfont=dict(color="#64748b"),
+            showgrid=True,
+        ),
+        yaxis=dict(gridcolor="rgba(0,0,0,0)", tickfont=dict(color="#94a3b8")),
+        height=max(240, len(_hm_grp) * 34 + 40),
+    )
+    st.plotly_chart(_fig_hm, use_container_width=True, config={"displayModeBar": False})
+else:
+    st.caption("No sector data available for the current screen.")
+
+st.divider()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stock Comparison — radar chart
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown('<div class="sec-head">🔄 &nbsp;Stock Comparison</div>', unsafe_allow_html=True)
+st.caption("Select 2–4 stocks to compare across all 6 factors on a radar chart.")
+
+_comp_syms = scored_df["Symbol"].str.replace(".NS", "", regex=False).tolist()
+_comp_sel  = st.multiselect(
+    "compare", _comp_syms,
+    default=_comp_syms[:2] if len(_comp_syms) >= 2 else _comp_syms,
+    max_selections=4,
+    label_visibility="collapsed",
+    key="comparison_stocks",
+)
+
+if len(_comp_sel) >= 2:
+    _radar_factors  = ["P/E", "P/B", "ROE", "D/E", "Growth", "52W Pos"]
+    _radar_cols     = ["pe_score", "pb_score", "roe_score", "de_score", "growth_score", "week52_score"]
+    _fill_colors    = ["rgba(139,92,246,0.12)", "rgba(52,211,153,0.12)", "rgba(248,113,113,0.12)", "rgba(251,191,36,0.12)"]
+    _line_colors    = ["#8b5cf6", "#34d399", "#f87171", "#fbbf24"]
+    _theta_closed   = _radar_factors + [_radar_factors[0]]
+
+    _fig_radar = go.Figure()
+    for _ci, _sym in enumerate(_comp_sel):
+        _row = scored_df[scored_df["Symbol"].str.replace(".NS", "", regex=False) == _sym]
+        if _row.empty:
+            continue
+        _r    = _row.iloc[0]
+        _vals = [float(_r.get(c, 5)) for c in _radar_cols]
+        _fig_radar.add_trace(go.Scatterpolar(
+            r=_vals + [_vals[0]],
+            theta=_theta_closed,
+            fill="toself",
+            fillcolor=_fill_colors[_ci % 4],
+            line=dict(color=_line_colors[_ci % 4], width=2),
+            name=_sym,
+            hovertemplate="<b>%{theta}</b>: %{r:.1f}/10<extra>" + _sym + "</extra>",
+        ))
+    _fig_radar.update_layout(
+        polar=dict(
+            bgcolor="rgba(0,0,0,0)",
+            radialaxis=dict(
+                visible=True, range=[0, 10],
+                tickfont=dict(color="#64748b", size=9),
+                gridcolor="rgba(255,255,255,0.08)",
+            ),
+            angularaxis=dict(
+                tickfont=dict(color="#94a3b8", size=11),
+                gridcolor="rgba(255,255,255,0.08)",
+            ),
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#94a3b8"),
+        legend=dict(font=dict(color="#94a3b8", size=12)),
+        margin=dict(l=40, r=40, t=40, b=40),
+        height=400,
+    )
+    st.plotly_chart(_fig_radar, use_container_width=True, config={"displayModeBar": False})
+elif len(_comp_sel) == 1:
+    st.caption("Select at least one more stock to enable comparison.")
 
 st.divider()
 

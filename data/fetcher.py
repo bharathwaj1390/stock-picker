@@ -21,6 +21,7 @@ def _empty_row(symbol: str) -> dict:
         "ROE (%)":             None,
         "Debt/Equity":         None,
         "Revenue Growth (%)":  None,
+        "Dividend Yield (%)":  None,
         "52W High":            None,
         "52W Low":             None,
     }
@@ -54,6 +55,10 @@ def _extract(symbol: str, info: dict) -> dict:
     rg_raw = info.get("revenueGrowth")
     rev_growth = round(rg_raw * 100, 2) if rg_raw is not None else None
 
+    # --- Dividend yield: decimal (0.025 → 2.5%) ---
+    dy_raw = info.get("dividendYield")
+    div_yield = round(dy_raw * 100, 2) if dy_raw is not None else None
+
     # --- Debt/Equity: yfinance returns ratio × 100 (45.5 → 0.455 D/E) ---
     de_raw = info.get("debtToEquity")
     de = round(de_raw / 100, 3) if de_raw is not None else None
@@ -73,6 +78,7 @@ def _extract(symbol: str, info: dict) -> dict:
         "ROE (%)":            roe,
         "Debt/Equity":        de,
         "Revenue Growth (%)": rev_growth,
+        "Dividend Yield (%)": div_yield,
         "52W High":           info.get("fiftyTwoWeekHigh"),
         "52W Low":            info.get("fiftyTwoWeekLow"),
     }
