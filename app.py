@@ -1,5 +1,7 @@
+import math
 import streamlit as st
 import pandas as pd
+import yfinance as yf
 from datetime import datetime
 
 from data.stocks import get_symbols
@@ -490,6 +492,41 @@ footer { visibility: hidden; }
     color: #64748b; font-weight: 700; margin-bottom: .2rem;
 }
 .mkt-banner-date-val { font-size: .92rem; font-weight: 800; color: #fbbf24; white-space: nowrap; }
+
+/* ═══ NIFTY 50 INDEX WIDGET ═══ */
+.nifty-widget {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.2rem;
+    backdrop-filter: blur(12px);
+}
+.nifty-section   { flex: 1; min-width: 0; }
+.nifty-idx-name  { font-size: .55rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-bottom: .3rem; }
+.nifty-price-val { font-size: 1.9rem; font-weight: 900; color: #f1f5f9; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+.nifty-chg-pill  { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 700; padding: .18rem .65rem; border-radius: 50px; margin-top: .38rem; }
+.nifty-up { background: rgba(16,185,129,0.15); color: #34d399; }
+.nifty-dn { background: rgba(248,113,113,0.12); color: #f87171; }
+.nifty-spark-section { flex: 0 0 auto; text-align: center; }
+.nifty-spark-lbl { font-size: .55rem; color: #64748b; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
+.nifty-gauge-section { flex: 0 0 130px; text-align: center; }
+.nifty-sentiment { font-size: .95rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin-top: .25rem; }
+.nifty-bull { color: #34d399; }
+.nifty-bear { color: #f87171; }
+.nifty-sent-sub { font-size: .58rem; color: #64748b; letter-spacing: .3px; margin-top: 3px; }
+@media (max-width: 640px) {
+    .nifty-widget { flex-direction: column; gap: .85rem; }
+    .nifty-gauge-section { display: flex; align-items: center; gap: .75rem; flex: none; width: 100%; }
+    .nifty-sentiment { margin-top: 0; }
+}
+
+/* ═══ PRICE IN TOP5 PICKS & INSIGHTS ═══ */
+.pick-price    { font-size: 1.05rem; font-weight: 800; color: #f1f5f9; margin: .2rem 0 .05rem; letter-spacing: -.2px; }
+.insight-price { font-size: .88rem; font-weight: 700; color: #94a3b8; margin-top: .3rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -556,6 +593,119 @@ with st.sidebar:
         "</div>",
         unsafe_allow_html=True,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NIFTY 50 widget helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _sparkline_svg(prices: list, width: int = 160, height: int = 42) -> str:
+    """Minimal SVG sparkline for a list of prices."""
+    if len(prices) < 2:
+        return ""
+    mn, mx = min(prices), max(prices)
+    rng = mx - mn or 1.0
+    pts = []
+    for i, p in enumerate(prices):
+        x = 4.0 + (i / (len(prices) - 1)) * (width - 8)
+        y = (height - 6) - ((p - mn) / rng) * (height - 12) + 2.0
+        pts.append((x, y))
+    color = "#34d399" if prices[-1] >= prices[0] else "#f87171"
+    poly  = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+    fill  = f"{pts[0][0]:.1f},{height} {poly} {pts[-1][0]:.1f},{height}"
+    lx, ly = pts[-1]
+    return (
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+        f'<defs><linearGradient id="nsg" x1="0" y1="0" x2="0" y2="1">'
+        f'<stop offset="0%" stop-color="{color}" stop-opacity="0.3"/>'
+        f'<stop offset="100%" stop-color="{color}" stop-opacity="0"/>'
+        f'</linearGradient></defs>'
+        f'<polygon points="{fill}" fill="url(#nsg)"/>'
+        f'<polyline points="{poly}" fill="none" stroke="{color}" '
+        f'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="3" fill="{color}"/>'
+        f'</svg>'
+    )
+
+
+def _gauge_svg(change_pct: float) -> str:
+    """
+    Semi-circular sentiment gauge.
+    Red (left) = bearish · Yellow (centre) = neutral · Green (right) = bullish.
+    Needle position is driven by today's % change, clamped to ±2%.
+    """
+    W, H = 120, 68
+    cx, cy = 60, 64
+    r_out, r_in = 54, 38
+    clamped = max(-2.0, min(2.0, change_pct))
+    # needle: -2% → 180° (left/bearish), 0% → 90° (top/neutral), +2% → 0° (right/bullish)
+    needle_deg = 90.0 - (clamped / 2.0) * 90.0
+    rad = math.radians(needle_deg)
+    nl  = r_in - 3
+    nx  = cx + nl * math.cos(rad)
+    ny  = cy - nl * math.sin(rad)
+
+    def _seg(a1_deg: float, a2_deg: float, color: str) -> str:
+        a1 = math.radians(a1_deg)
+        a2 = math.radians(a2_deg)
+        ox1, oy1 = cx + r_out * math.cos(a1), cy - r_out * math.sin(a1)
+        ox2, oy2 = cx + r_out * math.cos(a2), cy - r_out * math.sin(a2)
+        ix1, iy1 = cx + r_in  * math.cos(a2), cy - r_in  * math.sin(a2)
+        ix2, iy2 = cx + r_in  * math.cos(a1), cy - r_in  * math.sin(a1)
+        return (
+            f'<path d="M {ox1:.1f},{oy1:.1f} A {r_out},{r_out} 0 0,0 {ox2:.1f},{oy2:.1f} '
+            f'L {ix1:.1f},{iy1:.1f} A {r_in},{r_in} 0 0,1 {ix2:.1f},{iy2:.1f} Z" '
+            f'fill="{color}"/>'
+        )
+
+    nc   = "#34d399" if change_pct >= 0 else "#f87171"
+    segs = (
+        _seg(180, 120, "rgba(248,113,113,0.55)") +
+        _seg(120, 60,  "rgba(251,191,36,0.45)")  +
+        _seg(60,  0,   "rgba(16,185,129,0.55)")
+    )
+    return (
+        f'<svg width="{W}" height="{H}" viewBox="0 0 {W} {H}">'
+        f'{segs}'
+        f'<line x1="{cx}" y1="{cy}" x2="{nx:.1f}" y2="{ny:.1f}" '
+        f'stroke="{nc}" stroke-width="2.5" stroke-linecap="round"/>'
+        f'<circle cx="{cx}" cy="{cy}" r="5" fill="{nc}"/>'
+        f'<circle cx="{cx}" cy="{cy}" r="2.5" fill="#0A0812"/>'
+        f'</svg>'
+    )
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fetch_nifty() -> dict | None:
+    """Fetch NIFTY 50 current price, day change, and recent price history."""
+    try:
+        ticker = yf.Ticker("^NSEI")
+        info   = ticker.info
+        current = (
+            info.get("regularMarketPrice")
+            or info.get("currentPrice")
+            or info.get("previousClose")
+            or info.get("regularMarketPreviousClose")
+        )
+        prev = (
+            info.get("regularMarketPreviousClose")
+            or info.get("previousClose")
+        )
+        if not current or not prev:
+            return None
+        current, prev = float(current), float(prev)
+        change     = current - prev
+        change_pct = (change / prev) * 100
+        hist   = ticker.history(period="12d")
+        prices = hist["Close"].dropna().tolist()[-7:] if not hist.empty else []
+        return {
+            "price":      current,
+            "change":     change,
+            "change_pct": change_pct,
+            "prices":     prices,
+        }
+    except Exception:
+        return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -644,6 +794,50 @@ if not _mkt["is_open"]:
         f'<div class="mkt-banner-date">'
         f'<div class="mkt-banner-date-lbl">Prices as of</div>'
         f'<div class="mkt-banner-date-val">{_mkt["last_close"].strftime("%d %b %Y")}</div>'
+        f'</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NIFTY 50 index widget (always visible — fetched independently)
+# ─────────────────────────────────────────────────────────────────────────────
+_nifty = _fetch_nifty()
+if _nifty is not None:
+    _is_up      = _nifty["change_pct"] >= 0
+    _dir        = "▲" if _is_up else "▼"
+    _pill_cls   = "nifty-up" if _is_up else "nifty-dn"
+    _sent_cls   = "nifty-bull" if _is_up else "nifty-bear"
+    _sentiment  = "Bullish" if _is_up else "Bearish"
+    _price_disp = f"{_nifty['price']:,.2f}"
+    _chg_disp   = (
+        f"{_dir} {abs(_nifty['change']):,.2f} "
+        f"({abs(_nifty['change_pct']):.2f}%)"
+    )
+    _spark = (
+        _sparkline_svg(_nifty["prices"])
+        if len(_nifty.get("prices", [])) >= 2
+        else ""
+    )
+    _gauge = _gauge_svg(_nifty["change_pct"])
+    _spark_block = (
+        f'<div class="nifty-spark-section">'
+        f'<div class="nifty-spark-lbl">7-day trend</div>'
+        f'{_spark}'
+        f'</div>'
+    ) if _spark else ""
+    st.markdown(
+        f'<div class="nifty-widget">'
+        f'<div class="nifty-section">'
+        f'<div class="nifty-idx-name">NIFTY 50</div>'
+        f'<div class="nifty-price-val">{_price_disp}</div>'
+        f'<div class="nifty-chg-pill {_pill_cls}">{_chg_disp}</div>'
+        f'</div>'
+        f'{_spark_block}'
+        f'<div class="nifty-gauge-section">'
+        f'{_gauge}'
+        f'<div class="nifty-sentiment {_sent_cls}">{_sentiment}</div>'
+        f'<div class="nifty-sent-sub">Today\'s market mood</div>'
         f'</div>'
         f'</div>',
         unsafe_allow_html=True,
@@ -760,6 +954,7 @@ def _render_top5(scored_df: pd.DataFrame) -> None:
         bcls    = _BADGE_CLASS.get(rating, "b-h")
         symbol  = str(row["Symbol"]).replace(".NS", "")
         company = (row.get("Company") or "")[:30]
+        price   = format_price(row.get("Current Price"))
 
         pe_s  = _fmt(row.get("PE Ratio"),           "{:.1f}")
         roe_s = _fmt(row.get("ROE (%)"),             "{:.1f}%")
@@ -771,6 +966,7 @@ def _render_top5(scored_df: pd.DataFrame) -> None:
             f'<div class="pick-rank">#{i + 1} &nbsp;·&nbsp; Top Pick</div>'
             f'<div class="pick-sym">{symbol}</div>'
             f'<div class="pick-co">{company or "&nbsp;"}</div>'
+            f'<div class="pick-price">{price}</div>'
             f'<div class="pick-score">{row["value_score"]:.1f}<small> / 10</small></div>'
             f'<span class="pick-badge {bcls}">{rating}</span>'
             f'<div class="pick-mets">'
@@ -1055,6 +1251,7 @@ def _render_insight(row: pd.Series) -> None:
     rating  = row.get("rating", "Hold")
     bcls    = _BADGE_CLASS.get(rating, "b-h")
     w52_pos = _52w_pct(row)
+    _price  = format_price(row.get("Current Price"))
 
     bar_data = [
         ("P/E Ratio",    row.get("pe_score", 5),     row.get("PE Ratio"),           "pe"),
@@ -1088,7 +1285,9 @@ def _render_insight(row: pd.Series) -> None:
     st.markdown(
         f'<div class="insight-wrap">'
         f'<div class="insight-hdr">'
-        f'<div><div class="insight-sym">{symbol}</div><div class="insight-co">{company or "&nbsp;"}</div></div>'
+        f'<div><div class="insight-sym">{symbol}</div>'
+        f'<div class="insight-co">{company or "&nbsp;"}</div>'
+        f'<div class="insight-price">{_price}</div></div>'
         f'<div class="insight-right"><div class="insight-big">{score:.1f}<small> / 10</small></div>'
         f'<span class="pick-badge {bcls}" style="margin-top:.45rem;display:inline-block;">{rating}</span></div>'
         f'</div>'
