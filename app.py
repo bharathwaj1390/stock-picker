@@ -1007,9 +1007,17 @@ _panel = _fetch_market_panel()
 if _panel:
     # ── Primary row: NIFTY 50 + NIFTY Bank tiles + gauge + day circles ──────
     def _pt(sym: str) -> str:
-        d = _panel.get(sym, {})
+        d    = _panel.get(sym, {})
+        name = next((n for s, n, _ in _MARKET_TICKERS if s == sym), sym)
         if not d:
-            return ""
+            # Show placeholder so the tile is never invisibly missing
+            return (
+                f'<div class="mkt-primary-tile">'
+                f'<div class="mkt-pt-name">{name}</div>'
+                f'<div class="mkt-pt-price" style="color:#475569">—</div>'
+                f'<div class="mkt-pt-chg" style="color:#475569;font-size:.7rem">Unavailable</div>'
+                f'</div>'
+            )
         _up  = d["change_pct"] >= 0
         _cls = "mkt-up" if _up else "mkt-dn"
         _dir = "▲" if _up else "▼"
@@ -1600,7 +1608,14 @@ if analyse:
     skipped_count = len(raw_df) - len(complete_df)
 
     if complete_df.empty:
-        st.error("None of the stocks returned valid market data. Try again later.")
+        st.error(
+            "**Yahoo Finance returned no price data for any stock in this index.**\n\n"
+            "This is usually a temporary rate-limit from Yahoo Finance — it does not mean "
+            "the symbols are wrong. Please:\n"
+            "1. Wait 30–60 seconds, then click **⚡ Analyse** again.\n"
+            "2. If the problem persists, click **🔄 Refresh Data** in the sidebar first "
+            "to clear the cache, then retry."
+        )
         st.stop()
 
     scored_df = score_stocks(complete_df)
