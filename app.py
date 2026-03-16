@@ -120,7 +120,7 @@ footer { visibility: hidden; }
 }
 .hcc-stat { text-align: center; }
 .hcc-val  { font-size: 1.65rem; font-weight: 900; color: #f1f5f9; line-height: 1; }
-.hcc-lbl  { font-size: .57rem; color: #64748b; text-transform: uppercase; letter-spacing: .9px; font-weight: 700; margin-top: .25rem; }
+.hcc-lbl  { font-size: .57rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .9px; font-weight: 700; margin-top: .25rem; }
 .hcc-div  { width: 1px; height: 40px; background: rgba(255,255,255,0.10); flex-shrink: 0; }
 
 /* ═══ STAT CARDS ═══ */
@@ -159,8 +159,8 @@ footer { visibility: hidden; }
 .c-hold   .s-val { color: #fbbf24; }
 .c-avoid  .s-val { color: #f87171; }
 .c-savoid .s-val { color: #f43f5e; }
-.c-gap    .s-val { color: #475569; }
-.s-lbl { font-size: .6rem; text-transform: uppercase; letter-spacing: 1px; color: #475569; font-weight: 700; }
+.c-gap    .s-val { color: #64748b; }
+.s-lbl { font-size: .6rem; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 700; }
 
 /* ═══ PICK CARDS ═══ */
 .pick-card {
@@ -185,11 +185,11 @@ footer { visibility: hidden; }
     transform: translateY(-5px);
     box-shadow: 0 22px 52px rgba(0,0,0,0.55), 0 0 0 1px rgba(139,92,246,0.2), 0 0 36px rgba(139,92,246,0.1);
 }
-.pick-rank  { font-size: .58rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: .45rem; }
+.pick-rank  { font-size: .58rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: .45rem; }
 .pick-sym   { font-size: 1.3rem; font-weight: 900; color: #f1f5f9; line-height: 1.1; }
-.pick-co    { font-size: .68rem; color: #475569; margin: .1rem 0 .55rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-co    { font-size: .68rem; color: #94a3b8; margin: .1rem 0 .55rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pick-score { font-size: 3rem; font-weight: 900; background: linear-gradient(135deg,#8b5cf6,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height: 1; letter-spacing: -2px; }
-.pick-score small { font-size: .82rem; font-weight: 400; color: #475569; letter-spacing: 0; -webkit-text-fill-color:#475569; }
+.pick-score small { font-size: .82rem; font-weight: 400; color: #64748b; letter-spacing: 0; -webkit-text-fill-color:#64748b; }
 .pick-badge { display: inline-block; font-size: .58rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: .22rem .75rem; border-radius: 50px; margin: .4rem 0 .7rem; }
 .b-sb { background: rgba(16,185,129,0.15);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
 .b-b  { background: rgba(74,222,128,0.12);  color: #4ade80; border: 1px solid rgba(74,222,128,0.28); }
@@ -205,7 +205,7 @@ footer { visibility: hidden; }
 
 /* ═══ SECTION HEADERS ═══ */
 .sec-head {
-    font-size: .7rem; font-weight: 700; color: #475569;
+    font-size: .7rem; font-weight: 700; color: #64748b;
     text-transform: uppercase; letter-spacing: 1.8px;
     display: flex; align-items: center; gap: 10px; margin: 2rem 0 .9rem;
 }
@@ -268,10 +268,10 @@ footer { visibility: hidden; }
     border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 .insight-sym  { font-size: 1.8rem; font-weight: 900; color: #f1f5f9; line-height: 1; letter-spacing: -.5px; }
-.insight-co   { font-size: .78rem; color: #475569; margin-top: .3rem; }
+.insight-co   { font-size: .78rem; color: #94a3b8; margin-top: .3rem; }
 .insight-right { text-align: right; }
 .insight-big  { font-size: 2.6rem; font-weight: 900; background: linear-gradient(135deg,#8b5cf6,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height: 1; letter-spacing: -1px; }
-.insight-big small { font-size: .85rem; font-weight: 400; color: #475569; -webkit-text-fill-color:#475569; }
+.insight-big small { font-size: .85rem; font-weight: 400; color: #64748b; -webkit-text-fill-color:#64748b; }
 .factor-row {
     display: grid; grid-template-columns: 130px 1fr 52px;
     align-items: center; gap: 10px; margin-bottom: .85rem;
@@ -281,7 +281,7 @@ footer { visibility: hidden; }
 .factor-fill  { height: 100%; border-radius: 4px; }
 .factor-pts   { font-size: .72rem; font-weight: 700; color: #cbd5e1; text-align: right; white-space: nowrap; }
 .factor-why   {
-    font-size: .67rem; color: #475569; grid-column: 2 / 4;
+    font-size: .67rem; color: #94a3b8; grid-column: 2 / 4;
     margin-top: -.35rem; padding-left: 2px; line-height: 1.45;
 }
 .insight-summary {
@@ -361,7 +361,7 @@ footer { visibility: hidden; }
 }
 .stocks-table th {
     background: rgba(13,9,30,0.92);
-    color: #475569;
+    color: #64748b;
     font-size: .62rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -396,7 +396,7 @@ footer { visibility: hidden; }
     position: sticky; left: 0; z-index: 2;
     min-width: 34px; width: 34px;
     text-align: center !important;
-    color: #475569; font-size: .72rem;
+    color: #64748b; font-size: .72rem;
 }
 .sc-sym {
     position: sticky; left: 34px; z-index: 2;
@@ -455,8 +455,8 @@ footer { visibility: hidden; }
     align-items: flex-start;
     gap: 5px;
 }
-.rl-score   { font-size: .68rem; font-weight: 700; color: #64748b; letter-spacing: .2px; }
-.rl-meaning { font-size: .63rem; color: #475569; line-height: 1.4; }
+.rl-score   { font-size: .68rem; font-weight: 700; color: #94a3b8; letter-spacing: .2px; }
+.rl-meaning { font-size: .63rem; color: #94a3b8; line-height: 1.4; }
 @media (max-width: 900px)  { .rating-legend { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 480px)  { .rating-legend { grid-template-columns: repeat(2, 1fr); } }
 
@@ -483,7 +483,7 @@ footer { visibility: hidden; }
 .mkt-banner-date { text-align: right; flex-shrink: 0; }
 .mkt-banner-date-lbl {
     font-size: .55rem; text-transform: uppercase; letter-spacing: 1px;
-    color: #475569; font-weight: 700; margin-bottom: .2rem;
+    color: #64748b; font-weight: 700; margin-bottom: .2rem;
 }
 .mkt-banner-date-val { font-size: .92rem; font-weight: 800; color: #fbbf24; white-space: nowrap; }
 </style>
@@ -1142,7 +1142,7 @@ if scored_df is None:
       <div style="font-size:1.1rem; font-weight:700; color:#a78bfa; margin-bottom:.5rem;">
         No data loaded yet
       </div>
-      <div style="font-size:.82rem; color:#64748b;">
+      <div style="font-size:.82rem; color:#94a3b8;">
         Select an index above and click <b style="background:linear-gradient(90deg,#8b5cf6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">⚡ Analyse</b> to load live fundamentals.
       </div>
     </div>
