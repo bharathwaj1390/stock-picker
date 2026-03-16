@@ -646,6 +646,20 @@ footer { visibility: hidden; }
 /* ═══ FILTER BAR ═══ */
 .filter-section-lbl { font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.9px; color:#64748b; margin-bottom:.3rem; }
 
+/* ═══ PRESET ACTIVE PILL ═══ */
+.preset-active-pill {
+    margin-top: .45rem;
+    padding: .28rem .65rem;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid rgba(16,185,129,0.35);
+    border-radius: 999px;
+    color: #10b981;
+    font-size: .7rem;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: .4px;
+}
+
 /* ═══ HEATMAP & COMPARISON SECTIONS ═══ */
 .chart-section-wrap {
     background: rgba(255,255,255,0.025);
@@ -763,11 +777,12 @@ _MARKET_TICKERS = [
 ]
 
 # Preset screening strategies — sets filter defaults when clicked
+# "sort_lbl" must match a key in _SORT_MAP exactly (the selectbox display label)
 _PRESETS = {
-    "🔍 Deep Value": {"min_score": 5.0, "weights": [3, 2, 1, 1, 1, 2], "sort": "PE Ratio",           "asc": True},
-    "📈 Growth":     {"min_score": 5.0, "weights": [1, 1, 3, 1, 3, 1], "sort": "Revenue Growth (%)", "asc": False},
-    "🛡 Low Risk":   {"min_score": 4.0, "weights": [1, 1, 1, 3, 1, 3], "sort": "Debt/Equity",        "asc": True},
-    "💎 Quality":    {"min_score": 6.0, "weights": [2, 2, 3, 2, 2, 1], "sort": "value_score",        "asc": False},
+    "🔍 Deep Value": {"min_score": 5.0, "weights": [3, 2, 1, 1, 1, 2], "sort_lbl": "P/E Ratio",   "asc": True},
+    "📈 Growth":     {"min_score": 5.0, "weights": [1, 1, 3, 1, 3, 1], "sort_lbl": "Rev Growth",  "asc": False},
+    "🛡 Low Risk":   {"min_score": 4.0, "weights": [1, 1, 1, 3, 1, 3], "sort_lbl": "D/E Ratio",   "asc": True},
+    "💎 Quality":    {"min_score": 6.0, "weights": [2, 2, 3, 2, 2, 1], "sort_lbl": "Value Score",  "asc": False},
 }
 
 
@@ -813,11 +828,20 @@ with st.sidebar:
 
     def _apply_preset(pname: str) -> None:
         cfg = _PRESETS[pname]
-        st.session_state["min_score"] = cfg["min_score"]
-        st.session_state["sort_col"]  = cfg["sort"]
-        st.session_state["sort_asc"]  = cfg["asc"]
+        st.session_state["min_score"]      = cfg["min_score"]
+        st.session_state["tbl_sort_lbl"]   = cfg["sort_lbl"]   # direct widget key
+        st.session_state["sort_asc"]       = cfg["asc"]
+        st.session_state["_active_preset"] = pname
         for i, k in enumerate(["w_pe", "w_pb", "w_roe", "w_de", "w_gr", "w_w52"]):
             st.session_state[k] = cfg["weights"][i]
+
+    def _clear_preset() -> None:
+        st.session_state.pop("_active_preset", None)
+        st.session_state["tbl_sort_lbl"] = "Value Score"
+        st.session_state["sort_asc"]     = False
+        st.session_state["min_score"]    = 0.0
+        for _k in ["w_pe", "w_pb", "w_roe", "w_de", "w_gr", "w_w52"]:
+            st.session_state[_k] = 1
 
     _pc = st.columns(2)
     for _pi, _pname in enumerate(_PRESETS):
@@ -827,6 +851,16 @@ with st.sidebar:
                 use_container_width=True,
                 on_click=_apply_preset, args=(_pname,),
             )
+
+    # Active preset indicator + clear button
+    _active_preset = st.session_state.get("_active_preset")
+    if _active_preset:
+        st.markdown(
+            f'<div class="preset-active-pill">▶ {_active_preset} active</div>',
+            unsafe_allow_html=True,
+        )
+        st.button("✕ Clear Strategy", on_click=_clear_preset,
+                  use_container_width=True, type="secondary", key="btn_clear_preset")
 
     # ── Custom Factor Weights ─────────────────────────────────────────────────
     with st.expander("⚖️ Custom Factor Weights", expanded=False):
@@ -2048,12 +2082,9 @@ with _fb4:
         label_visibility="collapsed", key="rating_filter",
     )
 with _fb5:
-    _default_sort = st.session_state.get("sort_col", "value_score")
-    _sort_labels  = list(_SORT_MAP.keys())
-    _sort_cols    = list(_SORT_MAP.values())
-    _sort_def_idx = _sort_cols.index(_default_sort) if _default_sort in _sort_cols else 0
+    _sort_labels = list(_SORT_MAP.keys())
     _sort_lbl = st.selectbox(
-        "sort", _sort_labels, index=_sort_def_idx,
+        "sort", _sort_labels,
         label_visibility="collapsed", key="tbl_sort_lbl",
     )
     _sort_col_key = _SORT_MAP[_sort_lbl]
