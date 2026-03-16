@@ -1,9 +1,9 @@
 [theme]
-# Clean light theme — white canvas with emerald accent
-primaryColor = "#059669"
-backgroundColor = "#f8fafc"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#0f172a"
+# Dark purple-crimson theme — deep space with gradient accents
+primaryColor = "#8B5CF6"
+backgroundColor = "#0A0812"
+secondaryBackgroundColor = "#130E24"
+textColor = "#F1F5F9"
 font = "sans serif"
 
 [server]

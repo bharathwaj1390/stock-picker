@@ -27,10 +27,19 @@ def _empty_row(symbol: str) -> dict:
 
 
 def _has_price(info: dict) -> bool:
-    """Return True only if yfinance returned real market data."""
+    """
+    Return True if yfinance returned usable price data.
+
+    On weekends and market holidays, currentPrice / regularMarketPrice are
+    None because there is no live session.  previousClose and
+    regularMarketPreviousClose are always populated and are used as fallback
+    so the screener keeps working when markets are closed.
+    """
     return bool(info) and (
-        info.get("currentPrice") is not None
-        or info.get("regularMarketPrice") is not None
+        info.get("currentPrice")               is not None
+        or info.get("regularMarketPrice")      is not None
+        or info.get("previousClose")           is not None
+        or info.get("regularMarketPreviousClose") is not None
     )
 
 
@@ -53,7 +62,12 @@ def _extract(symbol: str, info: dict) -> dict:
         "Symbol":             symbol,
         "Company":            info.get("shortName") or info.get("longName"),
         "Sector":             info.get("sector"),
-        "Current Price":      info.get("currentPrice") or info.get("regularMarketPrice"),
+        "Current Price":      (
+            info.get("currentPrice")
+            or info.get("regularMarketPrice")
+            or info.get("previousClose")
+            or info.get("regularMarketPreviousClose")
+        ),
         "PE Ratio":           info.get("trailingPE"),
         "PB Ratio":           info.get("priceToBook"),
         "ROE (%)":            roe,

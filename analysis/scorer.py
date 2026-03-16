@@ -101,10 +101,12 @@ def _score_week52(current, high, low) -> float:
 # ---------------------------------------------------------------------------
 
 def _rating(value_score: float) -> str:
-    if value_score >= 8: return "Strong Buy"
-    if value_score >= 6: return "Buy"
-    if value_score >= 4: return "Hold"
-    return "Avoid"
+    if value_score >= 8.0: return "Strong Buy"
+    if value_score >= 6.0: return "Buy"
+    if value_score >= 5.0: return "Watch"
+    if value_score >= 4.0: return "Hold"
+    if value_score >= 2.0: return "Avoid"
+    return "Strong Avoid"
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +138,7 @@ def score_stocks(df: pd.DataFrame) -> pd.DataFrame:
         growth_score   Revenue Growth score     (1–10)
         week52_score   52-week position score   (1–10)
         value_score    Equal-weighted average   (float, 2 d.p.)
-        rating         "Strong Buy" | "Buy" | "Hold" | "Avoid"
+        rating         "Strong Buy" | "Buy" | "Watch" | "Hold" | "Avoid" | "Strong Avoid"
 
     Args:
         df: DataFrame from fetcher.fetch_stock_data()

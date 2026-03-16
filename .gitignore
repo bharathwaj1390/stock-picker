@@ -113,14 +113,12 @@ normalizers/
 session/
 tests/
 universe/
-utils/
 
 # --- Unused / pre-generated data files ---
 data/nifty_50.csv
 data/nifty_100.csv
 data/nifty_200.csv
 data/nifty_500.csv
-data/market_holidays.csv
 data/symbol_corrections.json
 
 # --- Planning and local-only docs ---
