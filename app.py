@@ -603,6 +603,20 @@ footer { visibility: hidden; }
 /* ═══ PRESET STRATEGY PILLS ═══ */
 .preset-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:.5rem; }
 
+/* Uniform height for ALL sidebar buttons (presets + refresh) */
+[data-testid="stSidebar"] .stButton button {
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
+    padding: 0 .6rem !important;
+    font-size: .76rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 /* ═══ FILTER BAR ═══ */
 .filter-section-lbl { font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.9px; color:#64748b; margin-bottom:.3rem; }
 
@@ -640,7 +654,7 @@ _MARKET_TICKERS = [
     ("^CNX100",    "NIFTY 100",     False),
     ("^NSEBANK",   "NIFTY Bank",    False),
     ("USDINR=X",   "USD / INR",     True),
-    ("^CNXMIDCAP", "NIFTY Midcap",  False),
+    ("^NSEMDCP50", "NIFTY Midcap",  False),
     ("^CNXIT",     "NIFTY IT",      False),
     ("GC=F",       "Gold (USD)",    True),
     ("^CNXSC",     "NIFTY Smallcap",False),
@@ -649,10 +663,10 @@ _MARKET_TICKERS = [
 
 # Preset screening strategies — sets filter defaults when clicked
 _PRESETS = {
-    "🔍 Deep Value":    {"min_score": 5.0, "weights": [3, 2, 1, 1, 1, 2], "sort": "PE Ratio",            "asc": True},
-    "📈 Growth Quality":{"min_score": 5.0, "weights": [1, 1, 3, 1, 3, 1], "sort": "Revenue Growth (%)",  "asc": False},
-    "🛡️ Low Risk":      {"min_score": 4.0, "weights": [1, 1, 1, 3, 1, 3], "sort": "Debt/Equity",         "asc": True},
-    "💎 Quality Core":  {"min_score": 6.0, "weights": [2, 2, 3, 2, 2, 1], "sort": "value_score",         "asc": False},
+    "🔍 Deep Value": {"min_score": 5.0, "weights": [3, 2, 1, 1, 1, 2], "sort": "PE Ratio",           "asc": True},
+    "📈 Growth":     {"min_score": 5.0, "weights": [1, 1, 3, 1, 3, 1], "sort": "Revenue Growth (%)", "asc": False},
+    "🛡 Low Risk":   {"min_score": 4.0, "weights": [1, 1, 1, 3, 1, 3], "sort": "Debt/Equity",        "asc": True},
+    "💎 Quality":    {"min_score": 6.0, "weights": [2, 2, 3, 2, 2, 1], "sort": "value_score",        "asc": False},
 }
 
 
