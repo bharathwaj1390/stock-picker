@@ -617,6 +617,32 @@ footer { visibility: hidden; }
     justify-content: center !important;
 }
 
+/* ═══ RISING MARKET CHART BACKGROUND ═══ */
+.bg-rising-chart {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+.bg-rising-chart svg { width: 100%; height: 100%; }
+
+/* Keep sidebar and main content above the background chart */
+[data-testid="stSidebar"] { position: relative; z-index: 1; }
+[data-testid="stMain"]    { position: relative; z-index: 1; }
+
+/* Pulsing glow ring at the chart tip */
+@keyframes bcg-pulse {
+    0%, 100% { transform: scale(1);   opacity: .45; }
+    50%       { transform: scale(1.6); opacity: .08; }
+}
+.bcg-glow-ring {
+    transform-origin: 1440px 232px;
+    animation: bcg-pulse 3s ease-in-out infinite;
+}
+
 /* ═══ FILTER BAR ═══ */
 .filter-section-lbl { font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.9px; color:#64748b; margin-bottom:.3rem; }
 
@@ -629,6 +655,81 @@ footer { visibility: hidden; }
     margin-bottom: 1.2rem;
 }
 </style>
+""", unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rising market chart background (fixed, behind all content)
+# ─────────────────────────────────────────────────────────────────────────────
+# The SVG path traces a bull-market rally from bottom-left to top-right with
+# natural corrections. Gradient fades from purple (left) to emerald (right).
+# preserveAspectRatio="xMidYMid slice" ensures it always covers the viewport.
+st.markdown("""
+<div class="bg-rising-chart">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900"
+     preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Line: transparent purple → visible emerald green -->
+    <linearGradient id="bcg-line" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#6d28d9" stop-opacity="0"/>
+      <stop offset="20%"  stop-color="#8b5cf6" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.55"/>
+    </linearGradient>
+    <!-- Area fill below the line -->
+    <linearGradient id="bcg-fill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#10b981" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Radial glow at the "latest price" dot -->
+    <radialGradient id="bcg-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#10b981" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Filled area under the line -->
+  <path d="M 0,830
+    C  80,825  140,810  200,790
+    C 260,770  280,785  340,758
+    C 400,731  415,720  475,695
+    C 535,670  548,660  600,635
+    C 652,610  670,625  730,595
+    C 790,565  800,575  850,545
+    C 900,515  895,540  955,495
+    C1015,450 1035,465 1090,425
+    C1145,385 1155,400 1215,358
+    C1275,316 1300,330 1360,288
+    C1400,258 1425,242 1440,232
+    L 1440,900 L 0,900 Z"
+    fill="url(#bcg-fill)"/>
+
+  <!-- Rising price line -->
+  <path d="M 0,830
+    C  80,825  140,810  200,790
+    C 260,770  280,785  340,758
+    C 400,731  415,720  475,695
+    C 535,670  548,660  600,635
+    C 652,610  670,625  730,595
+    C 790,565  800,575  850,545
+    C 900,515  895,540  955,495
+    C1015,450 1035,465 1090,425
+    C1145,385 1155,400 1215,358
+    C1275,316 1300,330 1360,288
+    C1400,258 1425,242 1440,232"
+    fill="none"
+    stroke="url(#bcg-line)"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <!-- Pulsing glow ring at the latest price tip -->
+  <circle class="bcg-glow-ring" cx="1440" cy="232" r="30"
+          fill="url(#bcg-glow)"/>
+  <!-- Solid dot -->
+  <circle cx="1440" cy="232" r="7"  fill="#10b981" opacity="0.45"/>
+  <circle cx="1440" cy="232" r="3.5" fill="#10b981" opacity="0.85"/>
+</svg>
+</div>
 """, unsafe_allow_html=True)
 
 
